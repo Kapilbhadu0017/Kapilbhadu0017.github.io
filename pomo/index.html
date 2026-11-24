@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#000000">
+<title>Focus</title>
+<style>
+:root{--red:#e3262b;--fg:#e8e8e8;--muted:#8a8a8a;--line:#262626;--field:#0d0d0d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#000;color:var(--fg);font:16px/1.4 system-ui,-apple-system,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;min-height:100vh;min-height:100dvh;overflow-x:hidden;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.top{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px}
+.top select{flex:0 1 auto;max-width:62vw;background:#000;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:9px 10px;font:inherit;font-size:15px}
+.top .sp{flex:1}
+.icon{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:none;display:grid;place-items:center}
+
+.stage{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.seg{font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.seg b{color:var(--fg);font-weight:600}
+#clock{display:block;width:min(95vw,calc(100dvh - 270px));min-width:220px;aspect-ratio:1;height:auto}
+.digits{font-size:clamp(44px,15vw,88px);font-weight:300;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:.02em}
+.next{font-size:14px;color:var(--muted);min-height:1.4em}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:4px 16px 0}
+.chip{min-width:40px;padding:5px 10px;border-radius:999px;border:1px solid #3a3a3a;background:none;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.chip.study{border-color:#7a1b1e;color:#d9d9d9}
+.chip.cur{background:var(--red);border-color:var(--red);color:#fff}
+.chip.done{opacity:.35}
+
+.controls{display:flex;align-items:center;justify-content:center;gap:18px;padding:14px 16px 24px}
+.side{width:54px;height:54px;border-radius:50%;border:1px solid var(--line);background:none;display:grid;place-items:center}
+.side:disabled{opacity:.25}
+.main{min-width:184px;height:64px;padding:0 22px;border-radius:32px;border:0;background:var(--fg);color:#000;font-size:19px;font-weight:650}
+body.ringing .main{background:var(--red);color:#fff;animation:pulse 1s ease-in-out infinite}
+body.ringing #ring{animation:flash 1s steps(2) infinite}
+@keyframes pulse{50%{transform:scale(1.05)}}
+@keyframes flash{50%{stroke:var(--red)}}
+
+/* settings */
+#ed{position:fixed;inset:0;z-index:5;background:#000;overflow-y:auto;padding:0 16px 48px;user-select:text;-webkit-user-select:text}
+#ed[hidden]{display:none}
+.edhead{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;background:#000;padding:14px 0;border-bottom:1px solid var(--line)}
+.edhead h2{margin:0;font-size:18px}
+.blk{border:1px solid var(--line);border-radius:14px;padding:12px;margin:14px 0}
+.blk.on{border-color:#5a1416}
+.row{display:flex;align-items:center;gap:8px;margin:8px 0}
+.row .grow{flex:1;min-width:0}
+input{background:var(--field);color:var(--fg);border:1px solid #2c2c2c;border-radius:10px;padding:10px;font:inherit;min-width:0}
+input.name{font-weight:600}
+input.min{width:74px;text-align:right}
+.unit{color:var(--muted);font-size:14px}
+.btn{background:#111;border:1px solid #2c2c2c;border-radius:10px;padding:10px 14px}
+.btn.pri{background:var(--fg);color:#000;border-color:var(--fg);font-weight:600}
+.btn.warn{color:#ff7b7f}
+.x{width:42px;height:42px;flex:none;border-radius:10px;border:1px solid #2c2c2c;background:none;color:var(--muted);font-size:18px}
+.x:disabled{opacity:.25}
+.meta{font-size:13px;color:var(--muted);margin:2px 2px 6px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.note{font-size:13px;color:var(--muted);margin:18px 2px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <select id="blockSel" aria-label="Pomodoro block"></select>
+  <span class="sp"></span>
+  <button class="icon" id="fsBtn" aria-label="Full screen"><svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  <button class="icon" id="edBtn" aria-label="Settings"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button>
+</div>
+
+<div class="stage">
+  <div class="seg" id="segLabel"></div>
+  <svg id="clock" viewBox="-100 -100 200 200" aria-hidden="true">
+    <circle id="ring" r="98" fill="none" stroke="#2a2a2a" stroke-width="1.5"/>
+    <g id="ticks"></g>
+    <circle id="full" r="86" style="fill:var(--red)"/>
+    <path id="wedge" style="fill:var(--red)"/>
+    <circle r="7" fill="#161616" stroke="#3a3a3a" stroke-width="1"/>
+  </svg>
+  <div class="digits" id="digits">25:00</div>
+  <div class="next" id="nextLabel"></div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="controls">
+  <button class="side" id="resetBtn" aria-label="Restart this timer"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+  <button class="main" id="mainBtn">Start</button>
+  <button class="side" id="skipBtn" aria-label="Skip to next"><svg class="i" viewBox="0 0 24 24"><path d="M5 5l10 7-10 7z"/><path d="M19 5v14"/></svg></button>
+</div>
+
+<div id="ed" hidden>
+  <div class="edhead"><h2>Pomodoro blocks</h2><button class="btn pri" id="edDone">Done</button></div>
+  <div id="edList"></div>
+  <div class="acts">
+    <button class="btn" id="addBlock">+ New block</button>
+    <button class="btn" id="testSound">Test sound</button>
+    <button class="btn warn" id="resetAll">Reset to defaults</button>
+  </div>
+  <p class="note">Times are in minutes (0.5 = 30 sec). Changes save on this phone automatically. Changing the timings of the block you are using resets its timer. The sound uses media volume.</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+const KEY = 'pomo.v1';
+const DEFAULTS = [
+  {name:'Pomodoro block', segs:[
+    {label:'Study',min:25},{label:'Active break',min:5},
+    {label:'Study',min:25},{label:'Active break',min:5},
+    {label:'Study',min:25},{label:'Real break',min:15}]},
+  {name:'Frozen? 3-min start', segs:[{label:'Tiny start',min:3}]}
+];
+const $ = id => document.getElementById(id);
+const clone = o => JSON.parse(JSON.stringify(o));
+const clamp = (n,a,b) => Math.min(b, Math.max(a, n));
+const isBreak = s => /break|rest/i.test(s.label);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- state ---------- */
+// status: idle | running | paused | ringing | ended | done
+let S = load();
+function load(){
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(KEY)); } catch(e) {}
+  const ok = d && Array.isArray(d.blocks) && d.blocks.length &&
+    d.blocks.every(b => b && Array.isArray(b.segs) && b.segs.length && b.segs.every(s => s && s.min > 0));
+  if (!ok) d = {blocks: clone(DEFAULTS), bi:0, si:0, status:'idle', endAt:0, rem:0};
+  d.bi = clamp(d.bi|0, 0, d.blocks.length-1);
+  d.si = clamp(d.si|0, 0, d.blocks[d.bi].segs.length-1);
+  if (!['idle','running','paused','ringing','ended','done'].includes(d.status)) d.status = 'idle';
+  if (d.status === 'running' && d.endAt <= Date.now()) d.status = 'ended';
+  if (d.status === 'ringing') d.status = 'ended';
+  if (d.status === 'ended' && d.si >= d.blocks[d.bi].segs.length-1) d.status = 'done';
+  return d;
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+const blk = () => S.blocks[S.bi];
+const seg = () => blk().segs[S.si];
+const durMs = () => Math.round(seg().min * 60000);
+const isLast = () => S.si >= blk().segs.length-1;
+function remaining(){
+  switch (S.status) {
+    case 'running': return Math.max(0, S.endAt - Date.now());
+    case 'paused':  return S.rem;
+    case 'idle':    return durMs();
+    default:        return 0;
+  }
+}
+
+/* ---------- sound (Web Audio, scheduled ahead so it fires on time) ---------- */
+let ctx = null, alarmGain = null, alarmAt = null;
+function unlockAudio(){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  if (!ctx) { try { ctx = new AC(); } catch(e) { return; } }
+  if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
+}
+function scheduleAlarm(ms){
+  cancelAlarm();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + Math.max(0, ms)/1000;
+  alarmGain = ctx.createGain();
+  alarmGain.gain.value = 0.35;
+  alarmGain.connect(ctx.destination);
+  for (let r = 0; r < 60; r++) {          // rings for ~2 minutes unless stopped
+    for (let k = 0; k < 3; k++) {
+      const s = t0 + r*2 + k*0.22;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square';
+      o.frequency.value = k === 2 ? 1320 : 880;
+      g.gain.setValueAtTime(0, s);
+      g.gain.linearRampToValueAtTime(1, s+0.01);
+      g.gain.setValueAtTime(1, s+0.13);
+      g.gain.linearRampToValueAtTime(0, s+0.15);
+      o.connect(g); g.connect(alarmGain);
+      o.start(s); o.stop(s+0.16);
+    }
+  }
+  alarmAt = t0;
+}
+function cancelAlarm(){
+  if (alarmGain) { try { alarmGain.disconnect(); } catch(e) {} }
+  alarmGain = null; alarmAt = null;
+}
+function ensureAlarmNow(){
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
+  // not scheduled, or scheduled late because audio was paused in the background
+  if (alarmAt === null || alarmAt - ctx.currentTime > 0.3) scheduleAlarm(0);
+}
+function testSound(){
+  unlockAudio();
+  if (!ctx) return alert('Sound is not supported in this browser.');
+  scheduleAlarm(0);
+  setTimeout(() => { if (S.status !== 'ringing' && S.status !== 'running') cancelAlarm(); }, 2000);
+}
+
+/* ---------- vibration ---------- */
+let vibeT = null, vibeEnd = null;
+function startVibe(){
+  stopVibe();
+  if (!navigator.vibrate) return;
+  const v = () => { try { navigator.vibrate([300,150,300,150,300]); } catch(e) {} };
+  v(); vibeT = setInterval(v, 2000); vibeEnd = setTimeout(stopVibe, 120000);
+}
+function stopVibe(){
+  clearInterval(vibeT); clearTimeout(vibeEnd); vibeT = vibeEnd = null;
+  if (navigator.vibrate) try { navigator.vibrate(0); } catch(e) {}
+}
+
+/* ---------- keep screen on ---------- */
+let lock = null, lockBusy = false;
+async function syncWake(){
+  const want = ['running','ringing','ended'].includes(S.status) && document.visibilityState === 'visible';
+  if (lockBusy || !('wakeLock' in navigator)) return;
+  lockBusy = true;
+  try {
+    if (want && !lock) {
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => { lock = null; });
+    } else if (!want && lock) {
+      await lock.release(); lock = null;
+    }
+  } catch(e) {}
+  lockBusy = false;
+}
+
+/* ---------- actions ---------- */
+let lastAct = 0;
+function set(status){ S.status = status; lastAct = Date.now(); save(); render(); }
+function start(){
+  unlockAudio();
+  const rem = S.status === 'paused' ? S.rem : durMs();
+  S.endAt = Date.now() + rem; S.rem = 0;
+  scheduleAlarm(rem);
+  set('running');
+}
+function pause(){
+  S.rem = Math.max(0, S.endAt - Date.now());
+  cancelAlarm();
+  set('paused');
+}
+function finish(){
+  S.rem = 0;
+  ensureAlarmNow(); startVibe();
+  set('ringing');
+}
+function stopSound(){ cancelAlarm(); stopVibe(); set(isLast() ? 'done' : 'ended'); }
+function next(){
+  if (isLast()) return set('done');
+  S.si++; S.status = 'idle'; start();
+}
+function hush(){ cancelAlarm(); stopVibe(); }
+function restartSeg(){ hush(); set('idle'); }
+function skip(){
+  hush();
+  if (isLast()) return set('done');
+  S.si++; set('idle');
+}
+function mainAction(){
+  if (Date.now() - lastAct < 450) return;   // stops a double tap from skipping a step
+  switch (S.status) {
+    case 'idle': case 'paused': start(); break;
+    case 'running': pause(); break;
+    case 'ringing': stopSound(); break;
+    case 'ended': next(); break;
+    case 'done': S.si = 0; set('idle'); break;
+  }
+}
+
+/* ---------- clock drawing ---------- */
+const wedge = $('wedge'), full = $('full'), ticksG = $('ticks');
+let ticksFor = null;
+function drawTicks(min){
+  if (ticksFor === min) return;
+  ticksFor = min;
+  let step, major;
+  if (min <= 10)      { step = 0.5; major = 1; }
+  else if (min <= 60) { step = 1;   major = 5; }
+  else                { step = 5;   major = 15; }
+  let out = '';
+  for (let t = 0; t < min - 1e-9; t += step) {
+    const a = t/min * 2*Math.PI, big = Math.abs(t/major - Math.round(t/major)) < 1e-9;
+    const r1 = big ? 88.5 : 91, r2 = 96;
+    const s = Math.sin(a), c = -Math.cos(a);
+    out += `<line x1="${(r1*s).toFixed(2)}" y1="${(r1*c).toFixed(2)}" x2="${(r2*s).toFixed(2)}" y2="${(r2*c).toFixed(2)}" stroke="${big?'#9a9a9a':'#4a4a4a'}" stroke-width="${big?1.6:1}" stroke-linecap="round"/>`;
+  }
+  ticksG.innerHTML = out;
+}
+// frac = share of time left (1 = full red disk, 0 = empty). Red edge moves clockwise from 12.
+function drawWedge(frac){
+  if (frac >= 0.99999) { full.style.display = ''; wedge.setAttribute('d', ''); return; }
+  full.style.display = 'none';
+  if (frac <= 0) { wedge.setAttribute('d', ''); return; }
+  const R = 86, a = (1-frac) * 2*Math.PI;
+  const x = (R*Math.sin(a)).toFixed(3), y = (-R*Math.cos(a)).toFixed(3);
+  wedge.setAttribute('d', `M0 0L${x} ${y}A${R} ${R} 0 ${frac > 0.5 ? 1 : 0} 1 0 ${-R}Z`);
+}
+function fmt(ms){
+  const t = Math.ceil(ms/1000), h = Math.floor(t/3600), m = Math.floor(t%3600/60), s = t%60;
+  const p = n => String(n).padStart(2,'0');
+  return h ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`;
+}
+const fmtMin = m => m < 1 ? `${Math.round(m*60)}s` : (Number.isInteger(m) ? `${m}` : `${m}`);
+function renderClock(){
+  const rem = remaining(), dur = durMs();
+  drawTicks(seg().min);
+  drawWedge(dur ? rem/dur : 0);
+  $('digits').textContent = fmt(rem);
+  document.title = S.status === 'running' ? `${fmt(rem)} · ${seg().label}` :
+                   S.status === 'ringing' ? `⏰ ${seg().label} over` : 'Focus';
+}
+
+/* ---------- main render ---------- */
+function render(){
+  document.body.classList.toggle('ringing', S.status === 'ringing');
+  // block picker
+  const sel = $('blockSel');
+  sel.innerHTML = S.blocks.map((b,i) => `<option value="${i}">${esc(b.name || 'Block '+(i+1))}</option>`).join('');
+  sel.value = String(S.bi);
+  // labels
+  const b = blk(), s = seg(), n = b.segs.length;
+  $('segLabel').innerHTML = S.status === 'done' ? '<b>Block done ✓</b>' :
+    `<b>${esc(s.label)}</b> · ${S.si+1} / ${n}`;
+  const nx = b.segs[S.si+1];
+  $('nextLabel').textContent =
+    S.status === 'done' ? 'Nice. Tap Again to repeat the block.' :
+    S.status === 'ringing' || S.status === 'ended' ? (nx ? `Next: ${nx.label} · ${fmtMin(nx.min)} min` : 'That was the last one') :
+    nx ? `Then: ${nx.label} · ${fmtMin(nx.min)} min` : 'Last one in this block';
+  // chips
+  $('chips').innerHTML = b.segs.map((x,i) => {
+    const cls = ['chip', isBreak(x) ? 'brk' : 'study',
+      i === S.si && S.status !== 'done' ? 'cur' : '',
+      i < S.si || S.status === 'done' ? 'done' : ''].join(' ');
+    return `<button class="${cls}" data-i="${i}" aria-label="${esc(x.label)} ${x.min} min">${fmtMin(x.min)}</button>`;
+  }).join('');
+  // buttons
+  const label = {idle:'▶  Start', running:'❚❚  Pause', paused:'▶  Resume', ringing:'🔕  Stop sound',
+    ended: nx ? `Next: ${nx.label} ▶` : 'Finish', done:'↺  Again'}[S.status];
+  $('mainBtn').textContent = label;
+  $('resetBtn').disabled = S.status === 'idle' || S.status === 'done';
+  $('skipBtn').disabled = S.status === 'done';
+  renderClock();
+  syncWake();
+}
+
+/* ---------- settings editor ---------- */
+let edRef = null, edMins = '';
+const minsKey = b => JSON.stringify(b.segs.map(s => s.min));
+function openEd(){
+  edRef = blk(); edMins = minsKey(edRef);
+  renderEd(); $('ed').hidden = false;
+}
+function closeEd(){
+  $('ed').hidden = true;
+  let reset = false;
+  const idx = S.blocks.indexOf(edRef);
+  if (idx < 0) { S.bi = 0; S.si = 0; reset = true; }
+  else { S.bi = idx; if (minsKey(edRef) !== edMins) reset = true; }
+  S.si = clamp(S.si, 0, blk().segs.length-1);
+  if (reset && S.status !== 'idle') { hush(); S.status = 'idle'; }
+  save(); render();
+}
+function renderEd(){
+  $('edList').innerHTML = S.blocks.map((b,bi) => {
+    const total = b.segs.reduce((a,s) => a + s.min, 0);
+    const h = Math.floor(total/60), m = Math.round((total%60)*10)/10;
+    return `<div class="blk${bi===S.bi?' on':''}" data-b="${bi}">
+      <div class="row"><input class="name grow" data-f="name" value="${esc(b.name)}" placeholder="Block name">
+        <button class="x" data-act="delBlock" ${S.blocks.length<2?'disabled':''} aria-label="Delete block">🗑</button></div>
+      <div class="meta">${b.segs.length} timers · total ${h?h+' h ':''}${m} min</div>
+      ${b.segs.map((s,si) => `<div class="row" data-s="${si}">
+        <input class="grow" data-f="label" value="${esc(s.label)}" placeholder="Label">
+        <input class="min" data-f="min" type="number" inputmode="decimal" min="0.1" step="any" value="${s.min}">
+        <span class="unit">min</span>
+        <button class="x" data-act="delSeg" ${b.segs.length<2?'disabled':''} aria-label="Remove">✕</button></div>`).join('')}
+      <div class="acts"><button class="btn" data-act="addStudy">+ Study</button><button class="btn" data-act="addBreak">+ Break</button></div>
+    </div>`;
+  }).join('');
+}
+$('edList').addEventListener('input', e => {
+  const el = e.target, bEl = el.closest('[data-b]'); if (!bEl) return;
+  const b = S.blocks[+bEl.dataset.b], f = el.dataset.f;
+  if (f === 'name') b.name = el.value;
+  else {
+    const s = b.segs[+el.closest('[data-s]').dataset.s];
+    if (f === 'label') s.label = el.value;
+    if (f === 'min') { const v = parseFloat(el.value); if (v > 0) s.min = Math.min(v, 600); }
+  }
+  save();
+});
+$('edList').addEventListener('change', e => {      // fix bad numbers and refresh totals
+  if (e.target.dataset.f === 'min') renderEd();
+});
+$('edList').addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]'); if (!btn) return;
+  const bi = +btn.closest('[data-b]').dataset.b, b = S.blocks[bi];
+  switch (btn.dataset.act) {
+    case 'delBlock':
+      if (S.blocks.length > 1 && confirm(`Delete "${b.name || 'this block'}"?`)) S.blocks.splice(bi, 1);
+      break;
+    case 'delSeg':
+      if (b.segs.length > 1) b.segs.splice(+btn.closest('[data-s]').dataset.s, 1);
+      break;
+    case 'addStudy': b.segs.push({label:'Study', min:25}); break;
+    case 'addBreak': b.segs.push({label:'Break', min:5}); break;
+  }
+  save(); renderEd();
+});
+$('addBlock').onclick = () => {
+  S.blocks.push({name:'New block', segs:[{label:'Study',min:25},{label:'Break',min:5}]});
+  save(); renderEd();
+  $('ed').scrollTop = $('ed').scrollHeight;
+};
+$('resetAll').onclick = () => {
+  if (!confirm('Reset all blocks to the defaults?')) return;
+  S.blocks = clone(DEFAULTS); S.bi = 0; S.si = 0; edRef = null;
+  save(); renderEd();
+};
+$('testSound').onclick = testSound;
+$('edDone').onclick = closeEd;
+$('edBtn').onclick = openEd;
+
+/* ---------- wiring ---------- */
+$('mainBtn').onclick = mainAction;
+$('resetBtn').onclick = restartSeg;
+$('skipBtn').onclick = skip;
+$('clock').addEventListener('click', () => { if (S.status === 'ringing') stopSound(); });
+$('chips').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  if (S.status === 'running' || S.status === 'ringing') return;
+  S.si = +c.dataset.i; set('idle');
+});
+$('blockSel').addEventListener('change', e => {
+  const i = +e.target.value;
+  if ((S.status === 'running' || S.status === 'paused') && !confirm('Switch block? The current timer will reset.')) {
+    e.target.value = String(S.bi); return;
+  }
+  hush(); S.bi = i; S.si = 0; set('idle');
+});
+
+const fsBtn = $('fsBtn');
+if (!document.fullscreenEnabled) fsBtn.style.display = 'none';
+fsBtn.onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  else document.documentElement.requestFullscreen({navigationUI:'hide'}).catch(()=>{});
+};
+document.addEventListener('fullscreenchange', () => {
+  fsBtn.setAttribute('aria-label', document.fullscreenElement ? 'Exit full screen' : 'Full screen');
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const resync = () => { if (S.status === 'running') scheduleAlarm(S.endAt - Date.now()); };
+  if (ctx && ctx.state === 'suspended') ctx.resume().then(resync).catch(()=>{});
+  else resync();
+  tick(); syncWake();
+});
+document.addEventListener('keydown', e => {
+  if (!$('ed').hidden || e.target.closest('input,select')) return;
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); lastAct = 0; mainAction(); }
+});
+
+function tick(){
+  if (S.status === 'running' && Date.now() >= S.endAt) finish();
+  else renderClock();
+}
+setInterval(tick, 250);
+render();
+})();
+</script>
+</body>
+</html>
